@@ -1,9 +1,10 @@
-import json
 import argparse
+import json
+import shutil
+from pathlib import Path
+
 import funcy
 from sklearn.model_selection import train_test_split
-from pathlib import Path
-import shutil
 
 parser = argparse.ArgumentParser(description='Splits COCO annotations file into training and test sets.')
 parser.add_argument('annotations', metavar='coco_annotations', type=str,
@@ -18,24 +19,27 @@ parser.add_argument('--images_folder', type=str, help='Path to images folder')
 
 args = parser.parse_args()
 
+
 def save_coco(file, info, licenses, images, annotations, categories):
     with open(file, 'wt', encoding='UTF-8') as coco:
-        json.dump({ 'info': info, 'licenses': licenses, 'images': images, 
-            'annotations': annotations, 'categories': categories}, coco, indent=2, sort_keys=True)
+        json.dump({'info': info, 'licenses': licenses, 'images': images,
+                   'annotations': annotations, 'categories': categories}, coco, indent=2, sort_keys=True)
+
 
 def filter_annotations(annotations, images):
     image_ids = funcy.lmap(lambda i: int(i['id']), images)
     return funcy.lfilter(lambda a: int(a['image_id']) in image_ids, annotations)
 
+
 def split_images(images_folder, images, category):
     images_folder = Path(images_folder)
-    new_dir = Path(images_folder.name + '_' + category)
+    new_dir = images_folder.with_name(images_folder.name + '_' + category)
     new_dir.mkdir(exist_ok=True)
 
     print(f"Copying {category} images...")
     for img in images:
-        if (img["file_name"]).endswith('.jpg'):
-            shutil.copy(images_folder / img["file_name"], new_dir)
+        shutil.copy(images_folder / img["file_name"], new_dir)
+
 
 def main(args):
     with open(args.annotations, 'rt', encoding='UTF-8') as annotations:
@@ -70,7 +74,6 @@ def main(args):
         if args.images_folder is not None:
             split_images(args.images_folder, x, 'train')
             split_images(args.images_folder, y, 'test')
-
 
         print("Saved {} entries in {} and {} in {}".format(len(x), args.train, len(y), args.test))
 
